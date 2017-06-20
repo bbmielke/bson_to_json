@@ -5,6 +5,7 @@ use warnings;
 use Mojolicious::Lite;
 use MIME::Base64;
 use Data::Dumper;
+use JSON::PP;
 
 
 get '/' => { template => 'form', input => '', output => ''};
@@ -16,7 +17,8 @@ post '/' => sub {
 
     my $message;
     eval {
-        $output = decode_base64($input);
+        my $prettyfier = JSON::PP->new->ascii->pretty->allow_nonref;
+        $output = $prettyfier->encode(decode_json(decode_base64($input)));
     };
     if($@) {
         $message = "Error: $@";
@@ -32,16 +34,6 @@ __DATA__
 @@ form.html.ep
     <!DOCTYPE html>
         <html>
-        <script>
-          function set_text() {
-
-            var output = `<%= $output %>`;
-            var parser = new DOMParser;
-            var dom = parser.parseFromString(output, 'text/html');
-            var json = JSON.stringify(JSON.parse(dom.body.textContent), undefined, 2);
-            document.getElementById('output').value = json;
-          }
-        </script>
         <body>
         <% if(my $message = flash 'message') { %>
           <p style="color:red;"><%= $message %></p>
@@ -51,12 +43,11 @@ __DATA__
           %= text_area input => '', cols => 80, rows => 15, id => 'input',
           <BR>
           OUTPUT: <BR>
-          %= text_area output => '', cols=>80, rows => 25, id => 'output',
+          <textarea cols="80" rows="25" id="output">
+%= stash 'output';
+          </textarea>
           <BR>
           %= submit_button 'OK'
         % end
-        <script>
-          set_text();
-        </script>
     </body>
   </html>
